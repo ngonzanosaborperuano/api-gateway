@@ -79,7 +79,7 @@ services:
     container_name: grafana
     restart: unless-stopped
     ports:
-      - "${GRAFANA_PORT}:3010"
+      - "${GRAFANA_PORT}:3000"
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
@@ -123,9 +123,9 @@ services:
     container_name: nats
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${NATS_CLIENT_PORT}:4222"
-      - "127.0.0.1:${NATS_MONITOR_PORT}:8222"
-      - "127.0.0.1:${NATS_ROUTE_PORT}:6222"
+      - "${NATS_CLIENT_PORT}:4222"
+      - "${NATS_MONITOR_PORT}:8222"
+      - "${NATS_ROUTE_PORT}:6222"
     volumes:
       - ./nats.conf:/etc/nats/nats.conf
     command: 
@@ -170,7 +170,7 @@ services:
       - zookeeper
     ports:
       - "${KAFKA_EXTERNAL_PORT}:9092"
-      - "29092:29092"
+      - "${KAFKA_INTERNAL_PORT}:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
@@ -262,6 +262,11 @@ services:
     depends_on:
       - postgres
     command: npm run start:dev
+    environment:
+      - API_APP=0.0.0.0
+      - DEBUG=http-proxy-middleware*
+    networks:
+      - backend_net
 
   nest_app:
     container_name: cocinando_nest
@@ -283,6 +288,8 @@ services:
       - kafka
       - nats
       - mqtt
+    environment:
+      - API_APP=0.0.0.0
     networks:
       - backend_net
 
@@ -297,6 +304,8 @@ services:
       - "${PORT_APP:-3001}:3001"
     command: npm run dev
     restart: unless-stopped
+    environment:
+      - API_APP=0.0.0.0
     networks:
       - backend_net
 

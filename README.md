@@ -97,35 +97,216 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
-# API Gateway
+# API Gateway - CocinaIA
 
-Este proyecto es un API Gateway construido con NestJS que enruta peticiones a microservicios internos:
+Un API Gateway robusto construido con NestJS que sigue principios **SOLID**, **DDD** (Domain-Driven Design) e **IoC** (Inversion of Control).
 
-- `/api1/*` → Redirige a clientes-microservice (puerto 3001)
-- `/api2/*` → Redirige a productos-microservice (puerto 3002)
+## 🏗️ Arquitectura
 
-## Uso
+### Estructura del Proyecto
 
-1. Instala dependencias:
-   ```bash
-   npm install
-   ```
-2. Inicia el gateway:
-   ```bash
-   npm run start
-   ```
-3. El gateway escuchará en el puerto **3000**.
+```
+src/
+├── core/                           # Capa de infraestructura
+│   ├── domain/                     # Entidades y Value Objects del dominio
+│   │   ├── entities/
+│   │   │   └── proxy-route.entity.ts
+│   │   └── value-objects/
+│   │       └── proxy-target.vo.ts
+│   ├── interfaces/                 # Interfaces del dominio
+│   │   └── proxy.interface.ts
+│   ├── logging/                    # Servicios de logging
+│   │   └── services/
+│   │       └── logging.service.ts
+│   ├── proxy/                      # Servicios de proxy
+│   │   └── services/
+│   │       ├── proxy-configuration.service.ts
+│   │       └── proxy-factory.service.ts
+│   └── core.module.ts
+├── modules/                        # Módulos de la aplicación
+│   ├── health/                     # Módulo de health checks
+│   │   ├── controllers/
+│   │   │   └── health.controller.ts
+│   │   ├── services/
+│   │   │   └── health.service.ts
+│   │   └── health.module.ts
+│   └── proxy/                      # Módulo de proxy
+│       ├── controllers/
+│       │   └── proxy.controller.ts
+│       └── proxy.module.ts
+├── shared/                         # Utilidades compartidas
+│   ├── constants/
+│   │   └── api-routes.constants.ts
+│   ├── decorators/
+│   │   └── log-execution-time.decorator.ts
+│   └── exceptions/
+│       └── proxy.exceptions.ts
+├── app.module.ts                   # Módulo raíz
+└── main.ts                         # Punto de entrada
+```
 
-## Estructura recomendada
+## 🚀 Funcionalidades
 
-- Código modular y desacoplado (DDD, SOLID, Clean Code)
-- Fácil de extender para agregar autenticación, logging, rate limiting, etc.
+### 1. Proxy de Rutas
 
-## Ejemplo de rutas
+- **Ruta principal**: `http://localhost:3000/api/v1/recipe` → `http://cocinando_express:3001/recipe`
+- Reescritura automática de paths
+- Manejo de errores robusto
+- Logging detallado de peticiones
 
-- `http://localhost:3000/api1/usuarios` → Proxy a `http://localhost:3001/usuarios`
-- `http://localhost:3000/api2/productos` → Proxy a `http://localhost:3002/productos`
+### 2. Health Checks
 
----
+- **Basic**: `GET /health` - Estado básico del gateway
+- **Detailed**: `GET /health/detailed` - Estado completo incluyendo servicios externos
 
-Puedes agregar lógica adicional en `GatewayService` o interceptores según tus necesidades.
+### 3. Monitoreo de Proxy
+
+- **Routes**: `GET /proxy/routes` - Lista de rutas configuradas
+- **Status**: `GET /proxy/status` - Estado operacional del proxy
+
+### 4. Logging Avanzado
+
+- Logs estructurados con NestJS Logger
+- Tracking de tiempo de respuesta
+- Manejo de errores detallado
+
+## 🔧 Configuración
+
+### Variables de Entorno
+
+```env
+# Puerto del gateway
+PORT=3000
+
+# URL del servicio Express
+EXPRESS_SERVICE_URL=http://cocinando_express:3001
+
+# CORS origins permitidos
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+
+# Logging level
+LOG_LEVEL=debug
+```
+
+### Docker Compose
+
+El gateway está configurado para funcionar en Docker:
+
+```yaml
+api-gateway:
+  container_name: api-gateway
+  build:
+    context: ../api-gateway
+    dockerfile: Dockerfile
+  env_file:
+    - ../api-gateway/.env
+  ports:
+    - '${PORT:-3000}:3000'
+  depends_on:
+    - postgres
+  command: npm run start:dev
+  environment:
+    - API_APP=0.0.0.0
+    - DEBUG=http-proxy-middleware*
+  networks:
+    - backend_net
+```
+
+## 🏛️ Principios Aplicados
+
+### SOLID Principles
+
+1. **Single Responsibility**: Cada servicio tiene una responsabilidad específica
+2. **Open/Closed**: Extensible para nuevas rutas sin modificar código existente
+3. **Liskov Substitution**: Interfaces bien definidas para servicios
+4. **Interface Segregation**: Interfaces específicas por dominio
+5. **Dependency Inversion**: Inyección de dependencias con NestJS
+
+### Domain-Driven Design (DDD)
+
+- **Entidades**: `ProxyRouteEntity` encapsula lógica de negocio
+- **Value Objects**: `ProxyTarget` con validaciones específicas
+- **Servicios de Dominio**: Lógica de configuración y factory
+- **Interfaces**: Contratos bien definidos
+
+### Inversion of Control (IoC)
+
+- Contenedor de dependencias de NestJS
+- Inyección por constructor
+- Configuración declarativa de módulos
+
+## 🧪 Testing
+
+### Health Check
+
+```bash
+curl http://localhost:3000/health
+```
+
+### Proxy Test
+
+```bash
+curl -X POST http://localhost:3000/api/v1/recipe \
+  -H "Content-Type: application/json" \
+  -d '{"nombre":"Receta Test","ingredientes":["test"],"pasos":["test"]}'
+```
+
+### Proxy Status
+
+```bash
+curl http://localhost:3000/proxy/status
+```
+
+## 🚦 Comandos
+
+```bash
+# Desarrollo
+npm run start:dev
+
+# Producción
+npm run start:prod
+
+# Build
+npm run build
+
+# Tests
+npm run test
+npm run test:e2e
+
+# Linting
+npm run lint
+npm run lint:fix
+```
+
+## 📊 Monitoreo
+
+### Logs
+
+- Todos los requests son loggeados con tiempo de respuesta
+- Errores de proxy son capturados y loggeados
+- Health checks de servicios externos
+
+### Métricas
+
+- Tiempo de respuesta de proxies
+- Estado de servicios externos
+- Errores por ruta
+
+## 🔒 Seguridad
+
+- Validación de entrada con ValidationPipe
+- CORS configurado
+- Headers de seguridad
+- Timeout de requests
+
+## 🤝 Contribución
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -am 'Agrega nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre un Pull Request
+
+## 📝 Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
