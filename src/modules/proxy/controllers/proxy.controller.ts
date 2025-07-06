@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { ProxyConfigurationService } from '../../../core/proxy/services/proxy-configuration.service';
+import { ProxyService } from '../../../core/proxy/services/proxy.service';
 
 export interface ProxyRouteInfo {
   path: string;
@@ -9,7 +9,7 @@ export interface ProxyRouteInfo {
 
 @Controller('proxy')
 export class ProxyController {
-  constructor(private readonly proxyConfigService: ProxyConfigurationService) {}
+  constructor(private readonly proxyService: ProxyService) {}
 
   @Get('routes')
   getProxyRoutes(): ProxyRouteInfo[] {
