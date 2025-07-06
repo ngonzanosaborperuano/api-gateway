@@ -8,7 +8,3 @@ export interface IProxyService {
   configureRoute(route: ProxyRoute): void;
   getMiddleware(path: string): any;
 }
-
-export interface IApplicationBootstrap {
-  bootstrap(): Promise<void>;
-}
