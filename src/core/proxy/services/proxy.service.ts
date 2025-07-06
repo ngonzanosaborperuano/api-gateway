@@ -12,33 +12,58 @@ export class ProxyService implements IProxyService {
   constructor(private readonly configService: ConfigService) {}
 
   configureRoute(route: ProxyRoute): void {
-    this.logger.log(
-      `Configuring proxy route: ${route.path} -> ${route.target}`,
-    );
+    this.logger.log(`🔀 Configurando proxy: ${route.path} → ${route.target}`);
 
     const middleware = createProxyMiddleware({
       target: route.target,
       changeOrigin: true,
       pathRewrite: route.pathRewrite || {},
       on: {
-        proxyReq: fixRequestBody,
+        proxyReq: (proxyReq, req) => {
+          fixRequestBody(proxyReq, req);
+          this.logger.debug(
+            `📤 Proxy: ${req.method} ${req.url} → ${route.target}${proxyReq.path}`,
+          );
+        },
         error: (err, req, res) => {
-          this.logger.error(`Proxy error for ${req.url}:`, err);
+          this.logger.error(
+            `❌ Error proxy ${req.method} ${req.url} → ${route.target}:`,
+            err.message,
+          );
           this.handleProxyError(res as Response);
         },
         proxyRes: (proxyRes, req) => {
+          const statusCode = proxyRes.statusCode || 0;
+          const isRootRequest =
+            req.url === '/' || req.url === '/api/v1/' || req.url === '/api/v1';
+          const is404OnRoot = statusCode === 404 && isRootRequest;
+
+          // No marcar error los 404 en rutas raíz
+          const statusIcon = statusCode >= 400 && !is404OnRoot ? '❌' : '✅';
+
           this.logger.log(
-            `Proxy response: ${req.method} ${req.url} -> ${proxyRes.statusCode}`,
+            `${statusIcon} Respuesta: ${req.method} ${req.url} → ${statusCode}`,
           );
         },
       },
     });
 
     this.proxyRoutes.set(route.path, middleware);
+    this.logger.debug(`✅ Ruta ${route.path} configurada`);
   }
 
   getMiddleware(path: string): any {
-    return this.proxyRoutes.get(path);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const middleware = this.proxyRoutes.get(path);
+    if (!middleware) {
+      this.logger.warn(`⚠️ No middleware found for path: ${path}`);
+    }
+
+    return middleware;
+  }
+
+  getAllConfiguredRoutes(): string[] {
+    return Array.from(this.proxyRoutes.keys());
   }
 
   private handleProxyError(res: Response): void {
@@ -46,6 +71,7 @@ export class ProxyService implements IProxyService {
       res.status(502).json({
         error: 'Bad Gateway',
         message: 'Service temporarily unavailable',
+        timestamp: new Date().toISOString(),
       });
     }
   }

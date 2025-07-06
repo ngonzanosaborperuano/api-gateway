@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../../app.module';
 import { CorsConfigService } from '../config/cors.config';
+import { RoutesConfigService } from '../config/routes.config';
 import { ProxyService } from '../proxy/services/proxy.service';
 
 export class ApplicationBootstrapService {
@@ -17,7 +18,8 @@ export class ApplicationBootstrapService {
 
   private static configureApplication(app: INestApplication): void {
     this.configureValidation(app);
-    this.configureProxy(app);
+    this.configureProxyRoutes(app);
+    // this.configureApiRouteHandlers(app); // DESHABILITADO para diagnosticar
     this.configureCors(app);
   }
 
@@ -32,22 +34,30 @@ export class ApplicationBootstrapService {
     this.logger.log('✅ Global validation configured');
   }
 
-  private static configureProxy(app: INestApplication): void {
+  private static configureProxyRoutes(app: INestApplication): void {
     const proxyService = app.get(ProxyService);
-    const configService = app.get(ConfigService);
+    const routesConfigService = app.get(RoutesConfigService);
 
-    const expressServiceUrl =
-      configService.get<string>('EXPRESS_SERVICE_URL') ||
-      'http://cocinando_express:3001';
+    // Obtener rutas ordenadas por especificidad (más específicas primero)
+    const routes = routesConfigService.getOrderedRoutes();
 
-    proxyService.configureRoute({
-      path: '/api/v1',
-      target: expressServiceUrl,
-      pathRewrite: { '^/api/v1': '' },
+    routes.forEach((route) => {
+      this.logger.log(`🔀 Configuring proxy: ${route.path} → ${route.target}`);
+      this.logger.debug(
+        `📝 PathRewrite config: ${JSON.stringify(route.pathRewrite)}`,
+      );
+
+      proxyService.configureRoute({
+        path: route.path,
+        target: route.target,
+        pathRewrite: route.pathRewrite,
+      });
+
+      app.use(route.path, proxyService.getMiddleware(route.path));
+      this.logger.debug(`✅ Middleware registered for: ${route.path}`);
     });
 
-    app.use('/api/v1', proxyService.getMiddleware('/api/v1'));
-    this.logger.log('✅ Proxy middleware configured');
+    this.logger.log(`✅ Configured ${routes.length} proxy routes`);
   }
 
   private static configureCors(app: INestApplication): void {
