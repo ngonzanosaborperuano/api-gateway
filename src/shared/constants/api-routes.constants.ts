@@ -1,47 +1,58 @@
-export const API_ROUTES = {
-  HEALTH: {
-    BASE: 'health',
-    DETAILED: 'health/detailed',
-  },
-  PROXY: {
-    BASE: 'proxy',
-    ROUTES: 'proxy/routes',
-    STATUS: 'proxy/status',
-  },
-  // Rutas hacia Express Service
-  RECIPES: {
-    BASE: '/api/v1/recipe',
-    PREFERENCES: '/api/v1/recipe/preferencias',
-    TARGET: 'http://cocinando_express:3001',
-    PATH_REWRITE: { '^/api/v1': '' },
-  },
-  PAYMENTS: {
-    BASE: '/api/v1/payments',
-    TARGET: 'http://cocinando_express:3001',
-    PATH_REWRITE: { '^/api/v1': '' },
-  },
-  // Rutas hacia Nest Service
-  USERS: {
-    BASE: '/api/v1/usuarios',
-    TARGET: 'http://cocinando_nest:3002',
-    PATH_REWRITE: { '^/api/v1': '' },
-  },
-  AUTH: {
-    BASE: '/api/v1/auth',
-    TARGET: 'http://cocinando_nest:3002',
-    PATH_REWRITE: { '^/api/v1': '' },
-  },
+import { ConfigService } from '@nestjs/config';
+
+// === TIPOS ===
+export interface RouteConfig {
+  path: string;
+  target: string;
+  pathRewrite?: Record<string, string>;
+  description?: string;
+}
+
+// === CONSTANTES INTERNAS ===
+// Rutas base para servicios
+const ROUTE_PATHS = {
+  RECIPES: '/api/v1/recipe',
+  PAYMENTS: '/api/v1/payments',
+  USERS: '/api/v1/usuarios',
+  AUTH: '/api/v1/auth',
 } as const;
 
-export const SERVICE_URLS = {
-  EXPRESS_SERVICE:
-    process.env.EXPRESS_SERVICE_URL || 'http://cocinando_express:3001',
-  NEST_SERVICE: process.env.NEST_SERVICE_URL || 'http://cocinando_nest:3002',
+// Configuraciones de reescritura de rutas
+const PATH_REWRITES = {
+  RECIPES: { '^/': '/recipe' },
+  PAYMENTS: { '^/': '/payments' },
+  USERS: { '^/': '/usuarios' },
+  AUTH: { '^/(.*)': '/auth/$1' },
 } as const;
 
-export const PROXY_ROUTES = {
-  // Express Service Routes
-  EXPRESS: ['/api/v1/recipe', '/api/v1/payments'],
-  // Nest Service Routes
-  NEST: ['/api/v1/usuarios', '/api/v1/auth'],
-} as const;
+export const getRouteConfig = (configService: ConfigService): RouteConfig[] => {
+  const expressServiceUrl = configService.get<string>('EXPRESS_SERVICE_URL')!;
+  const nestServiceUrl = configService.get<string>('NEST_SERVICE_URL')!;
+
+  return [
+    {
+      path: ROUTE_PATHS.RECIPES,
+      target: expressServiceUrl,
+      pathRewrite: PATH_REWRITES.RECIPES,
+      description: 'Recipe management endpoints',
+    },
+    {
+      path: ROUTE_PATHS.USERS,
+      target: nestServiceUrl,
+      pathRewrite: PATH_REWRITES.USERS,
+      description: 'User management endpoints',
+    },
+    {
+      path: ROUTE_PATHS.AUTH,
+      target: nestServiceUrl,
+      pathRewrite: PATH_REWRITES.AUTH,
+      description: 'Authentication endpoints',
+    },
+    {
+      path: ROUTE_PATHS.PAYMENTS,
+      target: expressServiceUrl,
+      pathRewrite: PATH_REWRITES.PAYMENTS,
+      description: 'Payment processing endpoints',
+    },
+  ];
+};
