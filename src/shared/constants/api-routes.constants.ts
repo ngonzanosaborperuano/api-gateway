@@ -13,7 +13,7 @@ export interface RouteConfig {
 const ROUTE_PATHS = {
   RECIPES: '/api/v1/recipe',
   PAYMENTS: '/api/v1/payments',
-  USERS: '/api/v1/usuarios',
+  USERS: '/api/v1/users',
   AUTH: '/api/v1/auth',
 } as const;
 
@@ -21,7 +21,7 @@ const ROUTE_PATHS = {
 const PATH_REWRITES = {
   RECIPES: { '^/': '/recipe' },
   PAYMENTS: { '^/': '/payments' },
-  USERS: { '^/': '/usuarios' },
+  USERS: { '^/': '/users' },
   AUTH: { '^/(.*)': '/auth/$1' },
 } as const;
 
